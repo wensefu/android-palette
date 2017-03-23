@@ -12,7 +12,6 @@
  4. 支持清除功能（clear）；
  5. 支持保存为图像（save）。
 ---------
-实现原理分析：
-
+实现原理分析：[android实现画板功能](http://www.jianshu.com/p/548d2799fd6e)
 ---------
-[android实现画板功能](http://www.jianshu.com/p/548d2799fd6e)
+
