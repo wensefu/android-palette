@@ -37,6 +37,10 @@ public class PaletteView extends View {
     private float mDrawSize;
     private float mEraserSize;
 
+    private boolean mCanEraser;
+
+    private Callback mCallback;
+
     public enum Mode {
         DRAW,
         ERASER
@@ -50,7 +54,16 @@ public class PaletteView extends View {
 
     public PaletteView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        setDrawingCacheEnabled(true);
         init();
+    }
+
+    public interface Callback {
+        void onUndoRedoStatusChanged();
+    }
+
+    public void setCallback(Callback callback){
+        mCallback = callback;
     }
 
     private void init() {
@@ -62,7 +75,7 @@ public class PaletteView extends View {
         mDrawSize = 20;
         mEraserSize = 40;
         mPaint.setStrokeWidth(mDrawSize);
-        mPaint.setColor(Color.BLACK);
+        mPaint.setColor(0XFF000000);
 
         mClearMode = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
     }
@@ -105,11 +118,11 @@ public class PaletteView extends View {
     }
 
     public void setEraserSize(float size) {
-
+        mEraserSize = size;
     }
 
     public void setPenRawSize(float size) {
-        mPaint.setStrokeWidth(size);
+        mEraserSize = size;
     }
 
     public void setPenColor(int color) {
@@ -143,7 +156,11 @@ public class PaletteView extends View {
         if (size > 0) {
             DrawingInfo info = mRemovedList.remove(size - 1);
             mDrawingList.add(info);
+            mCanEraser = true;
             reDraw();
+            if (mCallback != null) {
+                mCallback.onUndoRedoStatusChanged();
+            }
         }
     }
 
@@ -154,8 +171,14 @@ public class PaletteView extends View {
             if (mRemovedList == null) {
                 mRemovedList = new ArrayList<>(MAX_CACHE_STEP);
             }
+            if (size == 1) {
+                mCanEraser = false;
+            }
             mRemovedList.add(info);
             reDraw();
+            if (mCallback != null) {
+                mCallback.onUndoRedoStatusChanged();
+            }
         }
     }
 
@@ -167,13 +190,17 @@ public class PaletteView extends View {
             if (mRemovedList != null) {
                 mRemovedList.clear();
             }
+            mCanEraser = false;
             mBufferBitmap.eraseColor(Color.TRANSPARENT);
             invalidate();
+            if (mCallback != null) {
+                mCallback.onUndoRedoStatusChanged();
+            }
         }
     }
 
     public Bitmap buildBitmap() {
-        return null;
+        return getDrawingCache();
     }
 
     private void saveDrawingPath(){
@@ -188,6 +215,10 @@ public class PaletteView extends View {
         info.path = cachePath;
         info.paint = cachePaint;
         mDrawingList.add(info);
+        mCanEraser = true;
+        if (mCallback != null) {
+            mCallback.onUndoRedoStatusChanged();
+        }
     }
 
     @Override
@@ -217,13 +248,18 @@ public class PaletteView extends View {
                 if (mBufferBitmap == null) {
                     initBuffer();
                 }
+                if (mMode == Mode.ERASER && !mCanEraser) {
+                    break;
+                }
                 mBufferCanvas.drawPath(mPath,mPaint);
                 invalidate();
                 mLastX = x;
                 mLastY = y;
                 break;
             case MotionEvent.ACTION_UP:
-                saveDrawingPath();
+                if (mMode == Mode.DRAW || mCanEraser) {
+                    saveDrawingPath();
+                }
                 mPath.reset();
                 break;
         }
