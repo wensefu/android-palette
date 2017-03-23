@@ -200,7 +200,10 @@ public class PaletteView extends View {
     }
 
     public Bitmap buildBitmap() {
-        return getDrawingCache();
+        Bitmap bm = getDrawingCache();
+        Bitmap result = Bitmap.createBitmap(bm);
+        destroyDrawingCache();
+        return result;
     }
 
     private void saveDrawingPath(){
