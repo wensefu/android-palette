@@ -122,7 +122,7 @@ public class PaletteView extends View {
     }
 
     public void setPenRawSize(float size) {
-        mEraserSize = size;
+        mDrawSize = size;
     }
 
     public void setPenColor(int color) {
