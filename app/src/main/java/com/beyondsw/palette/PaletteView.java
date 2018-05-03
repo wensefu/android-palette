@@ -9,6 +9,7 @@ import android.graphics.Path;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.Xfermode;
+import android.support.annotation.Nullable;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -33,9 +34,11 @@ public class PaletteView extends View {
     private List<DrawingInfo> mDrawingList;
     private List<DrawingInfo> mRemovedList;
 
-    private Xfermode mClearMode;
-    private float mDrawSize;
-    private float mEraserSize;
+    private Xfermode mXferModeClear;
+    private Xfermode mXferModeDraw;
+    private int mDrawSize;
+    private int mEraserSize;
+    private int mPenAlpha = 255;
 
     private boolean mCanEraser;
 
@@ -48,13 +51,19 @@ public class PaletteView extends View {
 
     private Mode mMode = Mode.DRAW;
 
+
     public PaletteView(Context context) {
-        this(context,null);
+        super(context);
+        init();
     }
 
-    public PaletteView(Context context, AttributeSet attrs) {
+    public PaletteView(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
-        setDrawingCacheEnabled(true);
+        init();
+    }
+
+    public PaletteView(Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
         init();
     }
 
@@ -67,17 +76,19 @@ public class PaletteView extends View {
     }
 
     private void init() {
+        setDrawingCacheEnabled(true);
         mPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
         mPaint.setStyle(Paint.Style.STROKE);
         mPaint.setFilterBitmap(true);
         mPaint.setStrokeJoin(Paint.Join.ROUND);
         mPaint.setStrokeCap(Paint.Cap.ROUND);
-        mDrawSize = 20;
-        mEraserSize = 40;
+        mDrawSize = DimenUtils.dp2pxInt(3);
+        mEraserSize = DimenUtils.dp2pxInt(30);
         mPaint.setStrokeWidth(mDrawSize);
         mPaint.setColor(0XFF000000);
-
-        mClearMode = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
+        mXferModeDraw = new PorterDuffXfermode(PorterDuff.Mode.SRC);
+        mXferModeClear = new PorterDuffXfermode(PorterDuff.Mode.CLEAR);
+        mPaint.setXfermode(mXferModeDraw);
     }
 
     private void initBuffer(){
@@ -111,26 +122,25 @@ public class PaletteView extends View {
                 mPaint.setXfermode(null);
                 mPaint.setStrokeWidth(mDrawSize);
             } else {
-                mPaint.setXfermode(mClearMode);
+                mPaint.setXfermode(mXferModeClear);
                 mPaint.setStrokeWidth(mEraserSize);
             }
         }
     }
 
-    public void setEraserSize(float size) {
+    public void setEraserSize(int size) {
         mEraserSize = size;
     }
 
-    public void setPenRawSize(float size) {
+    public void setPenRawSize(int size) {
         mDrawSize = size;
+        if(mMode == Mode.DRAW){
+            mPaint.setStrokeWidth(mDrawSize);
+        }
     }
 
     public void setPenColor(int color) {
         mPaint.setColor(color);
-    }
-
-    public void setPenAlpha(int alpha) {
-        mPaint.setAlpha(alpha);
     }
 
     private void reDraw(){
@@ -141,6 +151,29 @@ public class PaletteView extends View {
             }
             invalidate();
         }
+    }
+
+    public int getPenColor(){
+        return mPaint.getColor();
+    }
+
+    public int getPenSize(){
+        return mDrawSize;
+    }
+
+    public int getEraserSize(){
+        return mEraserSize;
+    }
+
+    public void setPenAlpha(int alpha){
+        mPenAlpha = alpha;
+        if(mMode == Mode.DRAW){
+            mPaint.setAlpha(alpha);
+        }
+    }
+
+    public int getPenAlpha(){
+        return mPenAlpha;
     }
 
     public boolean canRedo() {
@@ -226,13 +259,18 @@ public class PaletteView extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
         if (mBufferBitmap != null) {
             canvas.drawBitmap(mBufferBitmap, 0, 0, null);
         }
     }
 
+    @SuppressWarnings("all")
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        if(!isEnabled()){
+            return false;
+        }
         final int action = event.getAction() & MotionEvent.ACTION_MASK;
         final float x = event.getX();
         final float y = event.getY();
