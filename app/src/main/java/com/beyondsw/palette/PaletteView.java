@@ -119,7 +119,7 @@ public class PaletteView extends View {
         if (mode != mMode) {
             mMode = mode;
             if (mMode == Mode.DRAW) {
-                mPaint.setXfermode(null);
+                mPaint.setXfermode(mXferModeDraw);
                 mPaint.setStrokeWidth(mDrawSize);
             } else {
                 mPaint.setXfermode(mXferModeClear);
